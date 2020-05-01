@@ -15,7 +15,9 @@ class Handler {
       })
       .promise();
 
-    const workingItems = result.Labels.filter(({ Confidence }) => Confidence > 80);
+    const workingItems = result.Labels.filter(
+      ({ Confidence }) => Confidence > 80
+    );
 
     const names = workingItems.map(({ Name }) => Name).join(" and ");
 
@@ -23,52 +25,53 @@ class Handler {
   }
 
   async translateText(text) {
-    const params = { 
-      SourceLanguageCode: 'en',
-      TargetLanguageCode: 'pt',
-      Text: text
-    }
+    const params = {
+      SourceLanguageCode: "en",
+      TargetLanguageCode: "pt",
+      Text: text,
+    };
 
-    const { TranslatedText } = await this.translatorSvc.translateText(params).promise();
-    return TranslatedText.split(' e ');
+    const { TranslatedText } = await this.translatorSvc
+      .translateText(params)
+      .promise();
+    return TranslatedText.split(" e ");
   }
 
   formatTextResults(texts, workingItems) {
-    const finalText = []
-    for(const indexText in texts) {
+    const finalText = [];
+    for (const indexText in texts) {
       const nameInPortuguese = texts[indexText];
       const confidence = workingItems[indexText].Confidence;
       finalText.push(
         `${confidence.toFixed(2)}% de ser do tipo ${nameInPortuguese}`
-      )
+      );
     }
 
-    return finalText.join('\n');
+    return finalText.join("\n");
   }
 
-  async getImageBuffer( imageUrl ) {
+  async getImageBuffer(imageUrl) {
     const response = await get(imageUrl, {
-      responseType: 'arraybuffer'
-    })
+      responseType: "arraybuffer",
+    });
 
-    const buffer = Buffer.from(response.data, 'base64');
+    const buffer = Buffer.from(response.data, "base64");
     return buffer;
   }
 
   async main(event) {
     try {
-      
-      const { imageUrl } = event.queryStringParameters
+      const { imageUrl } = event.queryStringParameters;
       // const imgBuffer = await readFile("./img/cat.jpg");
-      console.log('downloading image...')
+      console.log("downloading image...");
       const imgBuffer = await this.getImageBuffer(imageUrl);
-      console.log('Detecting labels...');
+      console.log("Detecting labels...");
       const { names, workingItems } = await this.detectImageLabels(imgBuffer);
-      console.log('Translation to portuguese...');
+      console.log("Translation to portuguese...");
       const texts = await this.translateText(names);
-      console.log('Handling final object...');
+      console.log("Handling final object...");
       const finalText = this.formatTextResults(texts, workingItems);
-      console.log('finishing...');
+      console.log("finishing...");
       return {
         statusCode: 200,
         body: `A imagem tem\n`.concat(finalText),
@@ -90,6 +93,6 @@ const translator = new aws.Translate();
 
 const handler = new Handler({
   rekoSvc: reko,
-  translatorSvc: translator
+  translatorSvc: translator,
 });
 module.exports.main = handler.main.bind(handler);
